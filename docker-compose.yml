@@ -1,0 +1,89 @@
+version: '3.8'
+
+# TODO: Configuration Docker pour la blockchain
+# Ce fichier permet de lancer plusieurs nœuds facilement pour tester le réseau
+
+services:
+  # TODO: Nœud 1 - Premier nœud du réseau
+  node1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: blockchain-node1
+    ports:
+      - "3000:3000"  # Port du nœud
+      - "8080:8080"  # Port de l'explorateur (si lancé sur ce nœud)
+    environment:
+      - NODE_PORT=3000
+      - NODE_NAME=node1
+      - PEERS=node2:3001,node3:3002  # Liste des pairs initiaux
+    networks:
+      - blockchain-network
+    # TODO: Volumes pour persister la blockchain
+    volumes:
+      - ./data/node1:/app/data
+    command: ./node --port 3000
+
+  # TODO: Nœud 2 - Deuxième nœud
+  node2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: blockchain-node2
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_PORT=3001
+      - NODE_NAME=node2
+      - PEERS=node1:3000,node3:3002
+    networks:
+      - blockchain-network
+    volumes:
+      - ./data/node2:/app/data
+    command: ./node --port 3001
+
+  # TODO: Nœud 3 - Troisième nœud
+  node3:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: blockchain-node3
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_PORT=3002
+      - NODE_NAME=node3
+      - PEERS=node1:3000,node2:3001
+    networks:
+      - blockchain-network
+    volumes:
+      - ./data/node3:/app/data
+    command: ./node --port 3002
+
+  # TODO: Explorateur web (optionnel, peut être sur un nœud séparé)
+  explorer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: blockchain-explorer
+    ports:
+      - "8080:8080"
+    environment:
+      - NODE_ADDRESS=node1:3000  # Adresse du nœud à explorer
+      - EXPLORER_PORT=8080
+    networks:
+      - blockchain-network
+    command: ./explorer --node-address node1:3000 --port 8080
+
+networks:
+  blockchain-network:
+    driver: bridge
+
+# TODO: Créer un Dockerfile dans le répertoire racine
+# Le Dockerfile devrait:
+# 1. Utiliser une image de base avec C++ (ex: gcc, clang)
+# 2. Installer les dépendances (OpenSSL, etc.)
+# 3. Copier le code source
+# 4. Compiler avec CMake
+# 5. Exposer les ports nécessaires
+

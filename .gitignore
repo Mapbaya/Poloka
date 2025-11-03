@@ -1,0 +1,40 @@
+# Build directories
+build/
+cmake-build-*/
+
+# Compiled files
+*.o
+*.so
+*.a
+*.exe
+*.out
+node
+explorer
+tests
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Data files (blockchain data, wallets, etc.)
+data/
+*.dat
+*.key
+*.wallet
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
