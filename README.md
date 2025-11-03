@@ -1,6 +1,8 @@
-# Mini-Blockchain
+# Poloka
 
-Une implémentation de blockchain en C++ pour l'apprentissage et la sécurité.
+A lightweight and secure blockchain implemented in C/C++. This project demonstrates the core principles of blockchain technology, including block creation, hashing, proof-of-work, and peer-to-peer synchronization.
+
+*Une implémentation de blockchain en C++ pour l'apprentissage et la sécurité.*
 
 ## Structure du projet
 
@@ -135,4 +137,3 @@ Ensuite, ouvrez votre navigateur sur `http://localhost:8080`
 ## Licence
 
 À définir selon vos préférences.
-
