@@ -1,66 +1,12 @@
 #include "block.h"
 #include <sstream>
 #include <iomanip>
-#include <openssl/sha.h>    
+#include <openssl/evp.h>
+#include <openssl/opensslv.h>
 // - <sstream> pour la concaténation de strings
 // - <iomanip> pour le formatage
-// - <openssl/sha.h> pour SHA256
+// - <openssl/evp.h> pour l'API EVP moderne (SHA256)
 
-/*
- * ============================================================================
- * TODO LIST - BLOCK.H / BLOCK.CPP
- * ============================================================================
- * 
- * ✅ TERMINÉ:
- * - Calcul du hash simplifié mais sécurisé (SHA256)
- * - Getters/Setters complets
- * - Validation de la difficulté du hash
- * - Sérialisation basique
- * - Cohérence entre .h et .cpp
- * 
- * 🔧 AMÉLIORATIONS À FAIRE:
- * 
- * 1. MERKLE TREE pour les transactions (block.cpp ligne 83)
- *    - Implémenter un arbre de Merkle pour hasher les transactions
- *    - Permet de vérifier une transaction sans recharger tout le bloc
- *    - Augmente la sécurité et l'efficacité
- *    - Priorité: MOYENNE (fonctionne sans, mais meilleure pratique)
- * 
- * 2. FORMAT JSON pour serialize() (block.cpp ligne 117)
- *    - Remplacer le format texte simple par JSON
- *    - Utiliser une bibliothèque comme nlohmann/json
- *    - Améliore l'interopérabilité avec d'autres systèmes
- *    - Priorité: BASSE (le format actuel fonctionne)
- * 
- * 3. SÉRIALISATION DES TRANSACTIONS (block.cpp ligne 127)
- *    - Dépend de l'implémentation de Transaction::serialize()
- *    - À faire une fois que Transaction est complète
- *    - Priorité: BASSE (dépend de Transaction)
- * 
- * 📋 DÉPENDANCES AVEC D'AUTRES CLASSES:
- * 
- * - Transaction::calculateHash() doit retourner un hash valide
- *   Actuellement retourne "", donc fallback "tx_placeholder" utilisé
- *   → Voir core/transaction.cpp pour compléter l'implémentation
- * 
- * - Transaction::serialize() doit être implémentée pour 
- *   améliorer Block::serialize()
- *   → Voir core/transaction.cpp pour compléter l'implémentation
- * 
- * 🔒 SÉCURITÉ:
- * 
- * ✅ SHA256 utilisé pour le hash (cryptographiquement sécurisé)
- * ✅ Toutes les données du bloc sont incluses dans le hash
- * ✅ Le hash est recalculé automatiquement quand le nonce change
- * ✅ Validation de la difficulté implémentée
- * 
- * ⚠️ POINTS D'ATTENTION:
- * - Le hash inclut les transactions via leurs hashs (sécurisé)
- * - Le Merkle Tree serait une amélioration mais n'est pas critique
- * - En production, vérifier que Transaction::calculateHash() ne retourne jamais ""
- * 
- * ============================================================================
- */
 
 // Constructeur par défaut
 Block::Block() {
@@ -129,63 +75,67 @@ void Block::setHash(const std::string& hash) {
 // Calcul du hash du bloc (CRITIQUE pour la sécurité)
 // Hash simple mais sécurisé: SHA256(index + previousHash + timestamp + transactions + nonce)
 std::string Block::calculateHash() const {
-    std::stringstream ss;
+    std::stringstream chaine_complete;
     
     // Concaténer toutes les données du bloc de manière déterministe
-    ss << index << previousHash << timestamp << nonce;
+    chaine_complete << index << previousHash << timestamp << nonce;
     
     // Ajouter toutes les transactions dans le hash
-    // Méthode sécurisée: utiliser le hash de chaque transaction
-    // TODO: Pour une sécurité accrue et une meilleure efficacité, implémenter un Merkle Tree des transactions
-    // Cela permettrait de vérifier une transaction sans recharger tout le bloc
-    for (const auto& tx : transactions) {
-        // Utiliser le hash de la transaction si disponible (plus sécurisé que sérialiser toutes les données)
-        std::string txHash = tx.calculateHash();
-        if (!txHash.empty()) {
-            ss << txHash;
-        } else {
-            // Fallback: utiliser un identifiant simple (temporaire jusqu'à ce que Transaction soit complète)
-            // En production, ce cas ne devrait jamais se produire
-            ss << "tx_placeholder";
-        }
+    //Pour chaque transaction dans la liste des transactions
+    // auto permet de deviner le type de la variable transaction
+    for (const auto& transaction : transactions) {
+        chaine_complete << transaction.calculateHash();
     }
     
-    std::string data = ss.str();
+    std::string texte_a_hasher = chaine_complete.str();
     
-    // Appliquer SHA256 avec OpenSSL
-    unsigned char hash[SHA256_DIGEST_LENGTH];
-    SHA256_CTX sha256;
-    SHA256_Init(&sha256);
-    SHA256_Update(&sha256, data.c_str(), data.length());
-    SHA256_Final(hash, &sha256);
+    // Calcul du hash avec l'API EVP moderne (non dépréciée)
+    //hash_bytes est un tableau de bytes (8 bits) où on va stocker le hash
+    unsigned char hash_bytes[EVP_MAX_MD_SIZE];
+    //hash_length est le nombre de bytes dans le hash (donc 32 octets pour SHA256)
+    unsigned int hash_length = 0;
+
+    //On créer un contexte de hash, comme une feuille où on garde les données à hasher
+    EVP_MD_CTX* mdctx = EVP_MD_CTX_new();
+    //mdctx == nullptr signifie que le contexte de hashage n'a pas été créé
+    if (mdctx == nullptr) {
+        return ""; // Erreur d'allocation
+    }
     
-    // Convertir le hash en hexadécimal
+    // Initialiser avec SHA256
+    // On dit "je veux utiliser SHA256" et nullptr signifie que l'on ne veut pas utiliser de données supplémentaires
+    if (EVP_DigestInit_ex(mdctx, EVP_sha256(), nullptr) != 1) {
+        EVP_MD_CTX_free(mdctx);
+        return ""; // Erreur d'initialisation, on renvoie une chaine vide
+    }
+    
+    // Mettre à jour avec les données
+    if (EVP_DigestUpdate(mdctx, texte_a_hasher.c_str(), texte_a_hasher.length()) != 1) {
+        EVP_MD_CTX_free(mdctx);
+        return ""; // Erreur de mise à jour
+    }
+    
+    // Finaliser le hash
+    if (EVP_DigestFinal_ex(mdctx, hash_bytes, &hash_length) != 1) {
+        EVP_MD_CTX_free(mdctx);
+        return ""; // Erreur de finalisation
+    }
+    
+    EVP_MD_CTX_free(mdctx);
+    
+    // Conversion du hash en hexadécimal
     std::stringstream hexStream;
     hexStream << std::hex << std::setfill('0');
-    for (int i = 0; i < SHA256_DIGEST_LENGTH; i++) {
-        hexStream << std::setw(2) << static_cast<unsigned>(hash[i]);
+    for (unsigned int i = 0; i < hash_length; i++) {
+        hexStream << std::setw(2) << static_cast<unsigned>(hash_bytes[i]);
     }
     
     return hexStream.str();
-}
 
-// Sérialisation du bloc en format texte simple
-// TODO: Pour une meilleure interopérabilité, implémenter un format JSON avec une bibliothèque comme nlohmann/json
-std::string Block::serialize() const {
-    std::stringstream ss;
-    ss << "Block #" << index << "\n"
-       << "Previous Hash: " << previousHash << "\n"
-       << "Hash: " << hash << "\n"
-       << "Timestamp: " << timestamp << "\n"
-       << "Nonce: " << nonce << "\n"
-       << "Transactions: " << transactions.size() << "\n";
-    
-    // TODO: Sérialiser les transactions une fois que Transaction::serialize() est implémentée
-    // for (size_t i = 0; i < transactions.size(); i++) {
-    //     ss << "  TX[" << i << "]: " << transactions[i].serialize() << "\n";
-    // }
-    
-    return ss.str();
+
+
+
+
 }
 
 // Vérifie si le hash du bloc respecte la difficulté (preuve de travail)
