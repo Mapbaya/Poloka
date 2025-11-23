@@ -1,125 +1,86 @@
 #include "transaction.h"
-// TODO: Inclure les headers nécessaires
-// - <sstream> pour la sérialisation
-// - <ctime> ou <chrono> pour les timestamps
-// - Bibliothèque crypto pour SHA256 et signatures (OpenSSL, etc.)
-// - "wallet.h" pour les fonctions de signature
+#include <sstream>
+#include <iomanip>
+#include <chrono>
+#include <openssl/evp.h>
+#include <openssl/opensslv.h>
 
-// TODO: Implémenter le constructeur par défaut
 Transaction::Transaction() {
-    // TODO: Initialiser tous les membres à des valeurs par défaut
-    // - id = ""
-    // - fromAddress = ""
-    // - toAddress = ""
-    // - amount = 0
-    // - signature = ""
-    // - timestamp = temps actuel
-    // - type = TRANSFER (ou valeur par défaut)
+    idUniqueHash = "";
+    ExpediteurAddress = "";
+    DestinataireAddress= "";
+    Montant = 0;
+    Signature = "";
+    Timestamp = std::to_string(std::chrono::system_clock::now().time_since_epoch().count());
+    typeTransaction = 0;
 }
 
-// TODO: Implémenter le constructeur avec paramètres
-Transaction::Transaction(const std::string& fromAddress, const std::string& toAddress, uint64_t amount) {
-    // TODO: Assigner les paramètres
-    // - this->fromAddress = fromAddress
-    // - this->toAddress = toAddress
-    // - this->amount = amount
-    // - timestamp = temps actuel
-    // - signature = "" (sera signée plus tard)
-    // - id = "" (sera calculé après la signature)
-    // - type = TRANSFER
+Transaction::Transaction(const std::string& idUniqueHash, const std::string& ExpediteurAddress, const std::string& DestinataireAddress, double Montant, const std::string& Signature, const std::string& Timestamp, int typeTransaction) {
+    this->idUniqueHash = idUniqueHash;
+    this->ExpediteurAddress = ExpediteurAddress;
+    this->DestinataireAddress = DestinataireAddress;
+    this->Montant = Montant;
+    this->Timestamp = std::to_string(std::chrono::system_clock::now().time_since_epoch().count());
+    this->Signature = Signature;
+    this->typeTransaction = typeTransaction;
 }
 
-// TODO: Implémenter le destructeur si nécessaire
 Transaction::~Transaction() {
-    // TODO: Code ici (généralement vide)
 }
 
-// TODO: Implémenter tous les getters
-// Exemple:
-// std::string Transaction::getId() const {
-//     return id;
-// }
-
-// TODO: Implémenter setSignature()
 void Transaction::setSignature(const std::string& signature) {
-    // TODO: this->signature = signature
+    this->Signature = signature;
 }
 
-// TODO: Implémenter calculateHash()
-// CRITIQUE: Le hash doit être calculé AVANT la signature
 std::string Transaction::calculateHash() const {
-    // TODO: Créer une chaîne avec les données de la transaction
-    // Format: fromAddress + toAddress + amount + timestamp
-    // 
-    // std::stringstream ss;
-    // ss << fromAddress << toAddress << amount << timestamp;
-    // std::string data = ss.str();
+    std::stringstream chaine_complete;
+    chaine_complete << ExpediteurAddress << DestinataireAddress << Montant << Timestamp;
+
+    std::string data = chaine_complete.str();
     
-    // TODO: Appliquer SHA256
-    // (Même méthode que dans block.cpp)
+    unsigned char hash_bytes[EVP_MAX_MD_SIZE];
+    unsigned int hash_length = 0;
     
-    // TODO: Retourner le hash en hexadécimal
-    return ""; // Placeholder
+    EVP_MD_CTX* mdctx = EVP_MD_CTX_new();
+    if (mdctx == nullptr) {
+        return "";
+    }
+
+    if (EVP_DigestInit_ex(mdctx, EVP_sha256(), nullptr) != 1) {
+        EVP_MD_CTX_free(mdctx);
+        return "";
+    }
+    
+    if (EVP_DigestUpdate(mdctx, data.c_str(), data.length()) != 1) {
+        EVP_MD_CTX_free(mdctx);
+        return "";
+    }
+    
+    if (EVP_DigestFinal_ex(mdctx, hash_bytes, &hash_length) != 1) {
+        EVP_MD_CTX_free(mdctx);
+        return "";
+    }
+    
+    EVP_MD_CTX_free(mdctx);
+    
+    std::stringstream hexStream;
+    hexStream << std::hex << std::setfill('0');
+    for (unsigned int i = 0; i < hash_length; i++) {
+        hexStream << std::setw(2) << static_cast<unsigned>(hash_bytes[i]);
+    }
+    
+    return hexStream.str();
 }
 
-// TODO: Implémenter sign()
-// IMPORTANT: Signer le hash, pas les données brutes
 bool Transaction::sign(const std::string& privateKey) {
-    // TODO: Calculer le hash de la transaction
-    // std::string txHash = calculateHash();
-    
-    // TODO: Signer le hash avec la clé privée
-    // Avec OpenSSL et ECDSA:
-    // 1. Charger la clé privée depuis une string (PEM ou format personnalisé)
-    // 2. Créer un contexte de signature ECDSA
-    // 3. Signer le hash
-    // 4. Encoder la signature en base64 ou hexadécimal
-    
-    // TODO: Stocker la signature dans this->signature
-    // TODO: Recalculer l'ID (le hash change avec la signature, ou l'ID est juste le hash avant signature)
-    
-    // Note: L'ID est généralement le hash de la transaction AVANT signature
-    // La signature est stockée séparément
-    
-    return false; // Placeholder
+    return false;
 }
 
-// TODO: Implémenter isValid()
-// Vérifier l'intégrité et l'authenticité de la transaction
 bool Transaction::isValid() const {
-    // TODO: Vérifications de base
-    // - fromAddress et toAddress ne doivent pas être vides (sauf pour les récompenses de minage)
-    // - amount > 0
-    // - signature ne doit pas être vide
-    
-    // TODO: Vérifier la signature cryptographique
-    // 1. Calculer le hash de la transaction
-    // 2. Vérifier la signature avec la clé publique de l'expéditeur
-    //    - Charger la clé publique depuis fromAddress
-    //    - Vérifier que la signature correspond au hash
-    //    - Utiliser ECDSA_verify ou équivalent
-    
-    return false; // Placeholder
+    return false;
 }
 
-// TODO: Implémenter serialize()
 std::string Transaction::serialize() const {
-    // TODO: Option 1 - JSON
-    // {
-    //   "id": "...",
-    //   "from": "...",
-    //   "to": "...",
-    //   "amount": 1000,
-    //   "timestamp": 1234567890,
-    //   "signature": "..."
-    // }
-    
-    // TODO: Option 2 - Format personnalisé
-    // std::stringstream ss;
-    // ss << "TX[" << id << "] "
-    //    << fromAddress << " -> " << toAddress
-    //    << " Amount: " << amount;
-    
-    return ""; // Placeholder
+    return "";
 }
 

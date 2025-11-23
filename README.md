@@ -98,7 +98,7 @@ Ensuite, ouvrez votre navigateur sur `http://localhost:8080`
 
 ### Notes importantes
 
-1. **Sécurité**: Les fichiers contiennent des commentaires guidés pour vous aider. La sécurité est CRITIQUE pour une blockchain. Assurez-vous de:
+1. **Sécurité**: La sécurité est critique pour une blockchain. Assurez-vous de:
    - Valider toutes les entrées
    - Vérifier toutes les signatures
    - Utiliser des fonctions cryptographiques éprouvées (OpenSSL)
@@ -106,27 +106,6 @@ Ensuite, ouvrez votre navigateur sur `http://localhost:8080`
 2. **Performance**: La preuve de travail peut être très coûteuse en CPU. Pour tester, commencez avec une difficulté faible (2-3).
 
 3. **Réseau**: La synchronisation P2P nécessite une gestion soigneuse des threads et de la concurrence.
-
-### Prochaines étapes pour l'implémentation
-
-1. **Core**:
-   - Implémenter les fonctions dans `core/blockchain.cpp`
-   - Implémenter le calcul de hash SHA256 dans `core/block.cpp`
-   - Implémenter la génération de clés et signatures dans `core/wallet.cpp`
-   - Implémenter le minage dans `core/pow.cpp`
-
-2. **Network**:
-   - Choisir une bibliothèque HTTP
-   - Implémenter les endpoints dans `network/node.cpp`
-   - Implémenter la découverte de pairs dans `network/peer.cpp`
-
-3. **Explorer**:
-   - Créer les templates HTML complets
-   - Implémenter les endpoints dans `explorer/app.cpp`
-
-4. **Tests**:
-   - Implémenter les tests unitaires
-   - Configurer un framework de test (Google Test, Catch2)
 
 ## Ressources
 
